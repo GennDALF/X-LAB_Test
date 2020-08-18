@@ -23,10 +23,10 @@ def speech_to_text(filename=None, bytes=None, request_id=uuid.uuid4().hex, topic
 	if not bytes:
 		raise Exception('Neither file name nor bytes provided.')
 	
-    # кодирование в формат PCM (разрядность 16 бит, частота сэмплирования 16 кГц)
+	# кодирование в формат PCM (разрядность 16 бит, частота сэмплирования 16 кГц)
 	bytes = convert_to_pcm16b16000r(in_bytes=bytes)
 	
-    # формирование тела запроса
+	# формирование тела запроса
 	url = ***_PATH + '?uuid=%s&key=%s&topic=%s&lang=%s' % (
 		request_id,
 		key,
@@ -34,53 +34,53 @@ def speech_to_text(filename=None, bytes=None, request_id=uuid.uuid4().hex, topic
 		lang
 	)
 	
-    # разбиение файла на части (требование веб-сервиса?)
+	# разбиение файла на части (требование веб-сервиса?)
 	chunks = read_chunks(CHUNK_SIZE, bytes)
     
 	# создание объекта для работы с HTTP
 	connection = httplib2.HTTPConnectionWithTimeout(***_HOST)
 	
-    # установление соединения
+	# установление соединения
 	connection.connect()
-    # тип и адрес HTTP запроса
+	# тип и адрес HTTP запроса
 	connection.putrequest('POST', url)
-    # указание на передачу файла по частям
+	# указание на передачу файла по частям
 	connection.putheader('Transfer-Encoding', 'chunked')
-    # указание на тип файла
+	# указание на тип файла
 	connection.putheader('Content-Type', 'audio/x-pcm;bit=16;rate=16000')
 	connection.endheaders()
 	
-    # передача файла по частям
+	# передача файла по частям
 	for chunk in chunks:
-        # подзаголовок из размера отправляемого блока
+		# подзаголовок из размера отправляемого блока
 		connection.send(('%s\r\n' % hex(len(chunk))[2:]).encode())
-        # блок
+		# блок
 		connection.send(chunk)
-        # конец блока
+		# конец блока
 		connection.send('\r\n'.encode())
 	
-    # конец передачи
+	# конец передачи
 	connection.send('0\r\n\r\n'.encode())
-    # запрос ответа
+	# запрос ответа
 	response = connection.getresponse()
 	
-    # если кот ответа ОК
+	# если кот ответа ОК
 	if response.code == 200:
 		# чтение ответа в строку
         response_text = response.read()
-        # из строки в объект XML
+		# из строки в объект XML
 		xml = XmlElementTree.fromstring(response_text)
 		
-        # если STT преобразование прошло успешно
+		# если STT преобразование прошло успешно
 		if int(xml.attrib['success']) == 1:
-            # установка нижней границы сравнения (-Inf)
+			# установка нижней границы сравнения (-Inf)
 			max_confidence = - float("inf")
 			text = ''
 			
-            # перебор подразделов XML объекта
+			# перебор подразделов XML объекта
 			for child in xml:
-                # поиск текстового блока с максимальным параметром 'confidence',
-                # соответствующим, как я понимаю, наиболее вероятному результату STT преобразования
+				# поиск текстового блока с максимальным параметром 'confidence',
+				# соответствующим, как я понимаю, наиболее вероятному результату STT преобразования
 				if float(child.attrib['confidence']) > max_confidence:
 					text = child.text
 					max_confidence = float(child.attrib['confidence'])
@@ -88,7 +88,7 @@ def speech_to_text(filename=None, bytes=None, request_id=uuid.uuid4().hex, topic
 			# если нашли текст
 			if max_confidence != - float("inf"):
 				return text
-            # не нашли текст
+			# не нашли текст
 			else:
 				raise SpeechException('No text found.\n\nResponse:\n%s' % (response_text))
 		# ошибка STT преобразования
